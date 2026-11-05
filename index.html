@@ -458,9 +458,10 @@ async function loadPublic(){
   try{
     const r=await fetch("/api/r?public=1",{cache:"no-store"});const j=await r.json();
     if(j.blackout){$("pubInfo").textContent="Por la ley electoral, los resultados no se pueden mostrar entre el 24 de noviembre y el cierre de los colegios el día 29.";$("pubHemi").innerHTML="";$("pubNote").hidden=true;return}
-    if(!r.ok||!j.n){$("pubInfo").textContent="Todavía no hay respuestas. Sé la primera persona en hacer el test.";$("pubHemi").innerHTML="";$("pubNote").hidden=true;return}
-    $("pubInfo").textContent="Con las respuestas de "+j.n.toLocaleString("es-ES")+(j.n===1?" persona.":" personas.");
-    renderHemi($("pubHemi"),j.cnt,j.avg);$("pubNote").hidden=false;
+    $("pubInfo").hidden=false;
+    if(!r.ok||!j.has){$("pubInfo").textContent="Todavía no hay respuestas. Sé la primera persona en hacer el test.";$("pubHemi").innerHTML="";$("pubNote").hidden=true;return}
+    $("pubInfo").hidden=true;
+    renderHemi($("pubHemi"),j.fav,j.avg);$("pubNote").hidden=false;
   }catch(e){$("pubInfo").textContent="No se han podido cargar los resultados. Inténtalo de nuevo en un rato."}
 }
 loadPublic();

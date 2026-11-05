@@ -121,7 +121,10 @@ module.exports = async (req, res) => {
       if (now >= BLACKOUT_FROM && now < BLACKOUT_TO) return res.status(200).json({ blackout: true });
       const codes = await redis(["LRANGE", LIST, "0", "-1"]);
       res.setHeader("Cache-Control", "public, s-maxage=60, stale-while-revalidate=300");
-      return res.status(200).json(aggregate(codes || []));
+      const g = aggregate(codes || []);
+      const t = g.cnt.reduce((x, y) => x + y, 0);
+      // Sin número de participantes: solo porcentajes.
+      return res.status(200).json({ has: g.n > 0, fav: g.cnt.map(v => (t ? v / t * 100 : 0)), avg: g.avg });
     }
     if (req.method === "GET") {
       const admin = process.env.ADMIN_KEY;
