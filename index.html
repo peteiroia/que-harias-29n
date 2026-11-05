@@ -126,8 +126,9 @@ textarea{font:inherit;color:var(--ink);background:var(--panel);border:2.5px soli
         <div id="hemiSvg"></div>
         <div id="hemiLeg" style="display:flex;flex-direction:column;gap:6px"></div>
         <p id="hemiMaj" class="small" style="font-weight:700"></p>
+        <div class="row small" style="gap:14px" role="radiogroup" aria-label="Cómo se calculan los escaños"><span style="font-weight:700">Calcular por:</span><label style="display:flex;gap:6px;align-items:center"><input type="radio" name="hmode" id="modeAff" checked> Afinidad media</label><label style="display:flex;gap:6px;align-items:center"><input type="radio" name="hmode" id="modeFav"> Candidato favorito</label></div>
         <label class="small" style="display:flex;gap:8px;align-items:center"><input id="otrosChk" type="checkbox" checked> Reservar 28 escaños a otros partidos (ERC, Junts, Bildu, PNV…), como en 2023</label>
-        <p class="small muted">Extrapolación aproximada: trata el candidato más afín de cada persona como si fuera su voto y reparte los escaños con la ley D'Hondt a nivel nacional, con un mínimo del 3%. No es un sondeo: la muestra no es representativa, afinidad no es intención de voto y el reparto real se hace provincia a provincia.</p>
+        <p class="small muted">Extrapolación aproximada. Con «Afinidad media», el porcentaje de afinidad del grupo con cada candidato cuenta como su porcentaje de votos; con «Candidato favorito», cada persona vota a su candidato más afín. Los escaños se reparten con la ley D'Hondt a nivel nacional, con un mínimo del 3%. No es un sondeo: la muestra no es representativa, afinidad no es intención de voto y el reparto real se hace provincia a provincia.</p>
       </div>
       <p class="small muted">La tendencia cuenta a qué candidato se parece más cada participante. Mide afinidad con lo anunciado en precampaña, no intención de voto.</p>
     </div>
@@ -377,9 +378,9 @@ function drawAgg(){
   const h2=document.createElement("p");h2.style.fontWeight="700";h2.textContent="Afinidad media del grupo";box.appendChild(h2);
   const b2=document.createElement("div");b2.style.cssText="display:flex;flex-direction:column;gap:12px";box.appendChild(b2);
   const avgR=round100(avg);bars(b2,avg.map((a,c)=>[c,avgR[c]]).sort((x,y)=>y[1]-x[1]),v=>v+"%");
-  lastCnt=cnt.slice();drawHemi();
+  lastCnt=cnt.slice();lastAvg=avg.slice();drawHemi();
 }
-let lastCnt=null;
+let lastCnt=null,lastAvg=null;
 const HEMI_ORDER=[4,3,0,5,1,2];
 const HEMI_NAME=["PSOE","PP","Vox","Frente Amplio","Podemos","Otros partidos"];
 const HEMI_COL=["#e3001b","#1d84ce","#5fb52a","#d4307a","#6b2f8f","#b8b5ab"];
@@ -403,7 +404,8 @@ function drawHemi(){
   box.hidden=false;
   const withOtros=$("otrosChk").checked;
   const reserve=withOtros?OTROS:0;
-  const s5=dhondt(lastCnt,350-reserve,0.03);
+  const byAff=$("modeAff").checked;
+  const s5=dhondt(byAff?lastAvg:lastCnt,350-reserve,0.03);
   const seats=[...s5,reserve];
   const pts=seatLayout(350);
   const W=440,H=240,cx=W/2,cy=H-14,R=200;
@@ -441,7 +443,7 @@ async function loadResults(){
 }
 $("akey").oninput=()=>{$("keyErr").hidden=true};
 $("load").onclick=loadResults;
-$("otrosChk").onchange=drawHemi;
+$("otrosChk").onchange=drawHemi;$("modeAff").onchange=drawHemi;$("modeFav").onchange=drawHemi;
 $("forget").onclick=()=>{try{localStorage.removeItem("b29q_key")}catch(e){}$("akey").value="";codes=[];$("agg").innerHTML="";$("updated").hidden=true};
 function showOwner(){
   $("owner").hidden=false;window.scrollTo(0,0);
