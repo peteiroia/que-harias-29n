@@ -310,7 +310,7 @@ function finish(){
   else{
     const rows=s.pct.map((p,c)=>[c,Math.round(p)]).sort((x,y)=>y[1]-x[1]);
     const top=rows[0][0];
-    const nt=$("note");nt.hidden=!(top===3||top===4);nt.textContent="No importa lo que piensen los demás, pero puede ser que te tachen de zurdo o zurda.";
+    const nt=$("note");nt.hidden=!(top===3||top===4);nt.textContent="No importa lo que piensen los demás, pero puede ser que te tachen de «surdo» o «surda».";
     $("topline").innerHTML='Te pareces más a <span></span>';$("topline").querySelector("span").textContent=CANDS[top];
     $("favName").textContent=CANDS[top]+" · "+rows[0][1]+"%";
     $("favIni").textContent=INI[top];
