@@ -125,7 +125,7 @@ textarea{font:inherit;color:var(--ink);background:var(--panel);border:2.5px soli
         <p style="font-family:var(--display);font-weight:800;font-size:1.15rem;margin:0">Hemiciclo estimado</p>
         <div id="hemiSvg"></div>
         <div id="hemiLeg" style="display:flex;flex-direction:column;gap:6px"></div>
-        <p id="hemiMaj" class="small" style="font-weight:700"></p>
+        <div id="pacts" style="display:flex;flex-direction:column;gap:12px"></div>
         <div class="row small" style="gap:14px" role="radiogroup" aria-label="Cómo se calculan los escaños"><span style="font-weight:700">Calcular por:</span><label style="display:flex;gap:6px;align-items:center"><input type="radio" name="hmode" id="modeMix" checked> Mezcla con 2023</label><label style="display:flex;gap:6px;align-items:center"><input type="radio" name="hmode" id="modeAff"> Afinidad media</label><label style="display:flex;gap:6px;align-items:center"><input type="radio" name="hmode" id="modeFav"> Candidato favorito</label></div>
         <label class="small" style="display:flex;gap:8px;align-items:center"><input id="otrosChk" type="checkbox" checked> Reservar 28 escaños a otros partidos (ERC, Junts, Bildu, PNV…), como en 2023</label>
         <p class="small muted">Extrapolación aproximada. «Mezcla con 2023» combina a partes iguales el test (mitad afinidad media, mitad candidato favorito) y los votos de las generales del 23 de julio de 2023, repartiendo el 12,3% de Sumar entre Frente Amplio y Podemos según sus escaños de entonces (26 y 5). Con «Afinidad media» solo cuenta la afinidad del grupo; con «Candidato favorito», cada persona vota a su candidato más afín. El porcentaje es sobre el voto a estos cinco partidos. Los escaños se reparten con la ley D'Hondt a nivel nacional, con un mínimo del 3%. No es un sondeo: la muestra no es representativa, afinidad no es intención de voto y el reparto real se hace provincia a provincia.</p>
@@ -401,6 +401,33 @@ function seatLayout(N){
   const pts=[];radii.forEach((r,i)=>{const n=per[i];for(let j=0;j<n;j++){const t=n===1?Math.PI/2:Math.PI*(1-j/(n-1));pts.push({r,t})}});
   pts.sort((a,b)=>(b.t-a.t)||(a.r-b.r));return pts;
 }
+// Otros partidos según sus escaños de 2023: ERC 7, Junts 7, Bildu 6, PNV 5, BNG 1, CC 1, UPN 1
+const OTROS_SPLIT={ERC:7,Junts:7,Bildu:6,PNV:5,BNG:1,CC:1,UPN:1};
+function drawPacts(seats,withOtros){
+  const o=k=>withOtros?OTROS_SPLIT[k]:0;
+  const P=[
+    {name:"PP + Vox",parts:[[1,seats[1]],[2,seats[2]]]},
+    {name:"PP + Vox + UPN + CC",note:"Los apoyos de Feijóo en su investidura de 2023",need:true,parts:[[1,seats[1]],[2,seats[2]],[5,o("UPN")+o("CC")]]},
+    {name:"PSOE + Frente Amplio + Podemos",parts:[[0,seats[0]],[3,seats[3]],[4,seats[4]]]},
+    {name:"PSOE + Frente Amplio + Podemos + nacionalistas",note:"Con ERC, Junts, Bildu, PNV, BNG y CC, como en la investidura de Sánchez de 2023",need:true,parts:[[0,seats[0]],[3,seats[3]],[4,seats[4]],[5,o("ERC")+o("Junts")+o("Bildu")+o("PNV")+o("BNG")+o("CC")]]},
+    {name:"PP + PSOE",note:"Gran coalición",parts:[[1,seats[1]],[0,seats[0]]]}
+  ].filter(p=>withOtros||!p.need);
+  const box=$("pacts");box.innerHTML="";
+  const h=document.createElement("p");h.style.cssText="font-family:var(--display);font-weight:800;font-size:1.05rem;margin:0";h.textContent="¿Qué pactos suman mayoría?";box.appendChild(h);
+  P.map(p=>({...p,tot:p.parts.reduce((x,[,v])=>x+v,0)})).sort((a,b)=>b.tot-a.tot).forEach(p=>{
+    const ok=p.tot>=176;
+    const d=document.createElement("div");d.style.cssText="display:flex;flex-direction:column;gap:5px";
+    d.innerHTML='<div class="row between" style="gap:8px;align-items:flex-start"><span style="font-weight:700;min-width:0;flex:1"></span><span class="pill" style="font-weight:800;font-size:.8rem;border:2px solid var(--ink);border-radius:999px;padding:2px 10px;white-space:nowrap"></span></div><div style="position:relative;height:22px;border:2.5px solid var(--ink);border-radius:8px;background:var(--panel);overflow:hidden;display:flex"></div><div class="small muted" style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px"><span style="min-width:0;flex:1"></span><span style="font-variant-numeric:tabular-nums;font-weight:700;color:var(--ink);white-space:nowrap"></span></div>';
+    d.querySelector("span").textContent=p.name;
+    const pill=d.querySelector(".pill");pill.textContent=ok?"Mayoría absoluta":"Le faltan "+(176-p.tot);pill.style.background=ok?"var(--mint)":"#ffc9bf";
+    const bar=d.children[1];
+    p.parts.forEach(([c,v])=>{if(!v)return;const seg=document.createElement("i");seg.style.cssText="display:block;height:100%;border-right:1.5px solid #141414;width:"+(v/350*100)+"%;background:"+HEMI_COL[c];bar.appendChild(seg)});
+    const line=document.createElement("b");line.style.cssText="position:absolute;top:-2px;bottom:-2px;left:"+(176/350*100)+"%;width:3px;background:#141414";bar.appendChild(line);
+    const meta=d.children[2].children;meta[0].textContent=p.note||"";meta[1].textContent=p.tot+" / 176";
+    box.appendChild(d);
+  });
+  const k=document.createElement("p");k.className="small muted";k.style.margin="0";k.textContent="La raya negra marca la mayoría absoluta: 176 de 350 escaños.";box.appendChild(k);
+}
 function drawHemi(){
   const box=$("hemi");if(!box)return;
   if(!lastCnt||!lastCnt.some(v=>v>0)){box.hidden=true;return}
@@ -422,13 +449,12 @@ function drawHemi(){
   const leg=$("hemiLeg");leg.innerHTML="";
   [0,1,2,3,4,5].filter(p=>seats[p]>0||p<5).sort((a,b)=>seats[b]-seats[a]).forEach(p=>{
     if(p===5&&!withOtros)return;
-    const d=document.createElement("div");d.className="row between";d.style.cssText="gap:8px;font-variant-numeric:tabular-nums";
-    d.innerHTML='<span style="display:flex;align-items:center;gap:8px"><i style="width:14px;height:14px;border-radius:50%;border:2px solid #141414;display:inline-block"></i><span></span></span><b></b>';
+    const d=document.createElement("div");d.style.cssText="display:flex;justify-content:space-between;align-items:center;gap:8px;font-variant-numeric:tabular-nums";
+    d.innerHTML='<span style="display:flex;align-items:center;gap:8px;min-width:0;flex:1"><i style="flex:none;width:14px;height:14px;border-radius:50%;border:2px solid #141414;display:inline-block"></i><span style="min-width:0"></span></span><b style="white-space:nowrap"></b>';
     d.querySelector("i").style.background=HEMI_COL[p];d.querySelector("span span").textContent=p<5?CANDS[p]:HEMI_NAME[5];
     d.querySelector("b").textContent=(p<5?(Math.round(share[p]*10)/10).toLocaleString("es-ES")+"% · ":"")+seats[p]+(seats[p]===1?" escaño":" escaños");leg.appendChild(d);
   });
-  const blocks=[["PSOE + Frente Amplio + Podemos",seats[0]+seats[3]+seats[4]],["PP + Vox",seats[1]+seats[2]]];
-  $("hemiMaj").textContent="Mayoría absoluta: 176. "+blocks.map(([n,v])=>n+": "+v).join(" · ")+".";
+  drawPacts(seats,withOtros);
 }
 async function loadResults(){
   const key=$("akey").value.trim();
