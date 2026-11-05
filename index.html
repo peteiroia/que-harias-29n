@@ -121,6 +121,14 @@ textarea{font:inherit;color:var(--ink);background:var(--panel);border:2.5px soli
       <div class="row"><button id="load" class="btn primary">Ver resultados</button><button id="forget" class="btn ghost">Olvidar clave</button></div>
       <p id="updated" class="small muted" hidden></p>
       <div id="agg" style="display:flex;flex-direction:column;gap:16px"></div>
+      <div id="hemi" hidden style="display:flex;flex-direction:column;gap:12px;border-top:3px solid var(--ink);padding-top:16px">
+        <p style="font-family:var(--display);font-weight:800;font-size:1.15rem;margin:0">Hemiciclo estimado</p>
+        <div id="hemiSvg"></div>
+        <div id="hemiLeg" style="display:flex;flex-direction:column;gap:6px"></div>
+        <p id="hemiMaj" class="small" style="font-weight:700"></p>
+        <label class="small" style="display:flex;gap:8px;align-items:center"><input id="otrosChk" type="checkbox" checked> Reservar 28 escaños a otros partidos (ERC, Junts, Bildu, PNV…), como en 2023</label>
+        <p class="small muted">Extrapolación aproximada: trata el candidato más afín de cada persona como si fuera su voto y reparte los escaños con la ley D'Hondt a nivel nacional, con un mínimo del 3%. No es un sondeo: la muestra no es representativa, afinidad no es intención de voto y el reparto real se hace provincia a provincia.</p>
+      </div>
       <p class="small muted">La tendencia cuenta a qué candidato se parece más cada participante. Mide afinidad con lo anunciado en precampaña, no intención de voto.</p>
     </div>
   </section>
@@ -369,6 +377,52 @@ function drawAgg(){
   const h2=document.createElement("p");h2.style.fontWeight="700";h2.textContent="Afinidad media del grupo";box.appendChild(h2);
   const b2=document.createElement("div");b2.style.cssText="display:flex;flex-direction:column;gap:12px";box.appendChild(b2);
   const avgR=round100(avg);bars(b2,avg.map((a,c)=>[c,avgR[c]]).sort((x,y)=>y[1]-x[1]),v=>v+"%");
+  lastCnt=cnt.slice();drawHemi();
+}
+let lastCnt=null;
+const HEMI_ORDER=[4,3,0,5,1,2];
+const HEMI_NAME=["PSOE","PP","Vox","Frente Amplio","Podemos","Otros partidos"];
+const HEMI_COL=["#e3001b","#1d84ce","#5fb52a","#d4307a","#6b2f8f","#b8b5ab"];
+const OTROS=28;
+function dhondt(votes,seats,thr){
+  const tot=votes.reduce((x,y)=>x+y,0);const ok=votes.map(v=>tot>0&&v/tot>=thr);const res=votes.map(()=>0);
+  if(!ok.some(Boolean))return res;
+  for(let k=0;k<seats;k++){let best=-1,bv=-1;votes.forEach((v,c)=>{if(!ok[c])return;const q=v/(res[c]+1);if(q>bv+1e-12){bv=q;best=c}});res[best]++}
+  return res;
+}
+function seatLayout(N){
+  const rows=12,r0=0.38;const radii=[...Array(rows)].map((_,i)=>r0+(1-r0)*i/(rows-1));
+  const sumR=radii.reduce((x,y)=>x+y,0);let per=radii.map(r=>Math.round(N*r/sumR));
+  let diff=N-per.reduce((x,y)=>x+y,0);for(let i=rows-1;diff!==0;i=(i-1+rows)%rows){per[i]+=diff>0?1:-1;diff+=diff>0?-1:1}
+  const pts=[];radii.forEach((r,i)=>{const n=per[i];for(let j=0;j<n;j++){const t=n===1?Math.PI/2:Math.PI*(1-j/(n-1));pts.push({r,t})}});
+  pts.sort((a,b)=>(b.t-a.t)||(a.r-b.r));return pts;
+}
+function drawHemi(){
+  const box=$("hemi");if(!box)return;
+  if(!lastCnt||!lastCnt.some(v=>v>0)){box.hidden=true;return}
+  box.hidden=false;
+  const withOtros=$("otrosChk").checked;
+  const reserve=withOtros?OTROS:0;
+  const s5=dhondt(lastCnt,350-reserve,0.03);
+  const seats=[...s5,reserve];
+  const pts=seatLayout(350);
+  const W=440,H=240,cx=W/2,cy=H-14,R=200;
+  let svg='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Hemiciclo estimado de 350 escaños" style="width:100%;height:auto;display:block">';
+  let idx=0;
+  HEMI_ORDER.forEach(p=>{for(let k=0;k<seats[p];k++){const pt=pts[idx++];const x=cx+R*pt.r*Math.cos(pt.t),y=cy-R*pt.r*Math.sin(pt.t);svg+='<circle cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="5.2" fill="'+HEMI_COL[p]+'" stroke="#141414" stroke-width=".8"/>'}});
+  svg+='<line x1="'+cx+'" y1="'+(cy-R*0.32)+'" x2="'+cx+'" y2="'+(cy-R*1.04)+'" stroke="#141414" stroke-width="1.5" stroke-dasharray="4 4"/>';
+  svg+='<text x="'+cx+'" y="'+(cy-6)+'" text-anchor="middle" font-family="Bricolage Grotesque,sans-serif" font-weight="800" font-size="26" fill="#141414">350</text></svg>';
+  $("hemiSvg").innerHTML=svg;
+  const leg=$("hemiLeg");leg.innerHTML="";
+  [0,1,2,3,4,5].filter(p=>seats[p]>0||p<5).sort((a,b)=>seats[b]-seats[a]).forEach(p=>{
+    if(p===5&&!withOtros)return;
+    const d=document.createElement("div");d.className="row between";d.style.cssText="gap:8px;font-variant-numeric:tabular-nums";
+    d.innerHTML='<span style="display:flex;align-items:center;gap:8px"><i style="width:14px;height:14px;border-radius:50%;border:2px solid #141414;display:inline-block"></i><span></span></span><b></b>';
+    d.querySelector("i").style.background=HEMI_COL[p];d.querySelector("span span").textContent=p<5?CANDS[p]:HEMI_NAME[5];
+    d.querySelector("b").textContent=seats[p]+(seats[p]===1?" escaño":" escaños");leg.appendChild(d);
+  });
+  const blocks=[["PSOE + Frente Amplio + Podemos",seats[0]+seats[3]+seats[4]],["PP + Vox",seats[1]+seats[2]]];
+  $("hemiMaj").textContent="Mayoría absoluta: 176. "+blocks.map(([n,v])=>n+": "+v).join(" · ")+".";
 }
 async function loadResults(){
   const key=$("akey").value.trim();
@@ -387,6 +441,7 @@ async function loadResults(){
 }
 $("akey").oninput=()=>{$("keyErr").hidden=true};
 $("load").onclick=loadResults;
+$("otrosChk").onchange=drawHemi;
 $("forget").onclick=()=>{try{localStorage.removeItem("b29q_key")}catch(e){}$("akey").value="";codes=[];$("agg").innerHTML="";$("updated").hidden=true};
 function showOwner(){
   $("owner").hidden=false;window.scrollTo(0,0);
