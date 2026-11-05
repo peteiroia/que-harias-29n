@@ -159,7 +159,6 @@ textarea{font:inherit;color:var(--ink);background:var(--panel);border:2.5px soli
     <div class="body">
       <span class="eyebrow">Tu resultado</span>
       <p id="topline" class="boom"></p>
-      <p id="note" class="small" hidden style="border:2.5px solid var(--ink);border-radius:12px;padding:10px 12px;background:var(--soft);font-weight:600"></p>
       <div id="mine" style="display:flex;flex-direction:column;gap:12px"></div>
       <p class="small muted">Cada porcentaje indica en cuántas situaciones elegiste lo mismo que ha defendido ese candidato. Es una orientación, no una recomendación de voto.</p>
       <p id="sentNote" class="small muted" hidden>Tus respuestas se han sumado al recuento de forma anónima, sin ningún dato tuyo.</p>
@@ -310,7 +309,6 @@ function finish(){
   else{
     const rows=s.pct.map((p,c)=>[c,Math.round(p)]).sort((x,y)=>y[1]-x[1]);
     const top=rows[0][0];
-    const nt=$("note");nt.hidden=!(top===3||top===4);nt.textContent="No importa lo que piensen los demás, pero puede ser que te tachen de «surdo» o «surda».";
     $("topline").innerHTML='Te pareces más a <span></span>';$("topline").querySelector("span").textContent=CANDS[top];
     $("favName").textContent=CANDS[top]+" · "+rows[0][1]+"%";
     $("favIni").textContent=INI[top];
